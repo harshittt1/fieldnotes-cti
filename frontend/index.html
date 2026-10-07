@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ThreatPulse — Cyber Threat Intelligence</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav class="top-nav"><div class="nav-left"><a class="logo" href="index.html">◈ ThreatPulse</a><span class="badge live">● LIVE</span></div>
+    <div class="nav-right"><span id="sync-time" class="sync-status">Connecting to intelligence store…</span><button id="refresh-feed" class="btn secondary">↻ Refresh</button><span id="db-status" class="btn success">● MongoDB Atlas</span></div></nav>
+  <section class="metrics-top-bar">
+    <div class="metric-card-top"><div class="metric-icon purple">💾</div><div><div class="metric-label">WORKING SET SIZE</div><div id="metric-working" class="metric-val">—</div></div></div>
+    <div class="metric-card-top"><div class="metric-icon blue">⚡</div><div><div class="metric-label">WIREDTIGER CACHE</div><div id="metric-cache" class="metric-val">—</div></div></div>
+    <div class="metric-card-top"><div class="metric-icon pink">🎯</div><div><div class="metric-label">CACHE HIT RATIO</div><div id="metric-hit" class="metric-val">—</div></div></div>
+    <div class="metric-card-top"><div class="metric-icon gray">📏</div><div><div class="metric-label">AVG $BSONSIZE</div><div id="metric-bson" class="metric-val">—</div></div></div>
+    <a class="btn secondary border-glow" href="lab71.html">⚡ Database Labs</a>
+  </section>
+  <nav class="sub-nav">
+    <a href="index.html" class="tab active">Threat Feed</a><a href="lab71.html" class="tab">Lab 7.1: Schema Analysis <span class="tab-badge">$bsonSize</span></a><a href="lab72.html" class="tab">Lab 7.2: WiredTiger & Working Set</a>
+    <a href="sources.html" class="tab">Sources</a><a href="iocs.html" class="tab">IOC Database</a><a href="virustotal.html" class="tab">VirusTotal Scan <span class="tab-badge info">Live API</span></a><a href="verify.html" class="tab">Threat Verifier</a>
+  </nav>
+  <div class="feed-layout">
+    <aside class="feed-sidebar">
+      <section class="sidebar-section"><div class="sidebar-title">SEARCH INTELLIGENCE</div><input id="feed-search" class="search-input" placeholder="Search threats, CVEs, IOCs…"><div class="help-text">Press Enter to search</div></section>
+      <section class="sidebar-section"><div class="sidebar-title">TAXONOMY CATEGORIES <span id="taxonomy-total">11 TYPES</span></div><ul id="category-list" class="taxonomy-list">
+        <li data-category="All" class="active"><span>🌐　All Intelligence</span><span class="count" id="count-all">—</span></li>
+        <li data-category="Threat-Actors"><span>🎭　Threat-Actors</span><span class="count">—</span></li>
+        <li data-category="Vulnerabilities"><span>🛡️　Vulnerabilities</span><span class="count">—</span></li>
+        <li data-category="Ransomware"><span>🔒　Ransomware</span><span class="count">—</span></li>
+        <li data-category="Patches"><span>🩹　Patches</span><span class="count">—</span></li>
+        <li data-category="Malware"><span>🦠　Malware</span><span class="count">—</span></li>
+        <li data-category="Government"><span>🏛️　Government</span><span class="count">—</span></li>
+        <li data-category="Mobile"><span>📱　Mobile</span><span class="count">—</span></li>
+        <li data-category="Cloud"><span>☁️　Cloud</span><span class="count">—</span></li>
+        <li data-category="IoT"><span>📡　IoT</span><span class="count">—</span></li>
+        <li data-category="Cryptography"><span>🔑　Cryptography</span><span class="count">—</span></li>
+        <li data-category="Compromised"><span>⚠️　Compromised</span><span class="count">—</span></li>
+      </ul></section>
+      <section class="sidebar-section"><label class="sidebar-title" for="source-filter">SOURCE FEED</label><select id="source-filter" class="source-select"><option value="All">All Verified Sources</option></select></section>
+      <section class="sidebar-section"><label class="sidebar-title" for="year-filter">TIMELINE</label><select id="year-filter" class="source-select"><option value="All">All Time</option></select></section>
+      <section class="sidebar-section"><div class="sidebar-title">SEVERITY LEVEL</div><div id="severity-filter" class="severity-options"><button class="selected" data-severity="All">All</button><button data-severity="Critical">Critical</button><button data-severity="High">High</button><button data-severity="Medium">Medium</button><button data-severity="Low">Low</button></div></section>
+      <button id="reset-filters" class="btn secondary reset-btn">↺ Reset All Filters</button>
+    </aside>
+    <main class="feed-main">
+      <section class="feed-header-card">
+        <div class="hero-title"><span class="hero-mark">⚡</span><div><h1>Live Cyber Threat Intelligence Ingestion & OSINT Streams</h1><p>Threat reports and indicators from your connected collection, with original source provenance.</p></div></div>
+        <div class="tags-row"><span class="tag green">● ThreatFox</span><span class="tag yellow">● MISP feeds</span><span class="tag blue">● CTIDigest</span><span class="tag purple">💾 <span id="total-reports">Loading…</span> unified threat feed records</span></div>
+        <div class="ingestion-row"><div class="ingestion-actions"><button class="btn accent-btn" data-sync="all">⚡ Ingest All Live Feeds</button><button class="btn secondary" data-sync="malwarebazaar">🦠 Sync MalwareBazaar Samples</button><button class="btn secondary" data-sync="virustotal">🛡️ Sync VirusTotal Intel</button></div>
+          <form id="quick-vt-form" class="quick-vt"><input id="quick-vt-value" class="search-input" placeholder="IP / Domain / Hash"><button class="btn accent-btn">🔍 Live VT Inspect</button></form></div>
+        <div id="sync-message" class="sync-message" aria-live="polite"></div>
+      </section>
+      <div class="feed-controls"><span class="tag active-category">Category: <b id="current-category">All</b></span><div class="feed-control-right"><label class="sr-only" for="sort-filter">Sort feed</label><select id="sort-filter" class="source-select compact"><option value="newest">Newest First</option><option value="oldest">Oldest First</option><option value="year">Year</option></select><button id="grid-view" class="icon-btn active-view" aria-label="3-Column Grid View">▦</button><button id="list-view" class="icon-btn" aria-label="SOC Stream List View">☷</button><span id="results-count" class="result-count">Loading reports…</span></div></div>
+      <div id="active-filters" class="active-filters"></div>
+      <div id="feed-grid" class="feed-grid" aria-live="polite"></div>
+      <div class="pagination"><span id="pagination-info">Page 1</span><div><button id="previous-page" class="btn secondary" disabled>Previous</button><button id="next-page" class="btn secondary">Next</button></div></div>
+    </main>
+  </div>
+  <div id="modal-overlay" class="modal-overlay" hidden><section class="modal-content"><header class="modal-heading"><h2 id="modal-title">Report details</h2><button id="modal-close" class="modal-close" aria-label="Close">×</button></header><div id="modal-body" class="modal-body"></div></section></div>
+  <script src="feed.js"></script>
+</body></html>

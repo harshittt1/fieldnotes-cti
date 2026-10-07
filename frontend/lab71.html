@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThreatPulse - Lab 7.1 Schema Analysis</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-left">
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#2DD4BF" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M2 17L12 22L22 17" stroke="#2DD4BF" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="#2DD4BF" stroke-width="2" stroke-linejoin="round"/>
+                </svg>
+                ThreatPulse
+            </div>
+            <span class="badge live">● LIVE</span>
+        </div>
+        <div class="nav-right">
+            <span class="sync-status">Live database analysis</span>
+            <button class="btn secondary">↻ Refresh</button>
+            <button class="btn success" id="lab-api-status">● Checking backend</button>
+        </div>
+    </nav>
+
+    <div class="sub-nav">
+        <a href="index.html" class="tab">Threat Feed</a>
+        <a href="lab71.html" class="tab active">Lab 7.1: Schema Analysis <span class="tab-badge">$bsonSize</span></a>
+        <a href="lab72.html" class="tab">Lab 7.2: WiredTiger & Working Set <span class="tab-badge warning">Working Set</span></a>
+        <a href="sources.html" class="tab">Sources</a>
+        <a href="iocs.html" class="tab">IOC Database</a>
+        <a href="virustotal.html" class="tab">VirusTotal scan <span class="tab-badge info">Live API</span></a>
+        <a href="verify.html" class="tab">Threat Verifier <span class="tab-badge success">Instant Truth</span></a>
+    </div>
+
+    <main class="container">
+        <header class="page-header">
+            <div>
+                <h1>Lab 7.1: Production Schema Analysis ($bsonSize)</h1>
+                <p>Examine embedding vs referencing decisions & verify MongoDB 16 MB limit compliance.</p>
+            </div>
+            <button class="btn primary" id="recalculate-btn" onclick="fetchSchemaAnalysis()">Recalculate $bsonSize</button>
+        </header>
+        <p id="lab-status" class="lab-status" role="status">Connecting to live database metrics…</p>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">AVERAGE DOCUMENT SIZE</div>
+                <div class="metric-value" id="avg-size">-- KB</div>
+                <div class="metric-sub" id="avg-pct">~0.00% of 16 MB Limit</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">MAXIMUM DOCUMENT SIZE</div>
+                <div class="metric-value" id="max-size">-- KB</div>
+                <div class="metric-sub" id="max-sub">Safe (< 0.02% of limit)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">MINIMUM DOCUMENT SIZE</div>
+                <div class="metric-value" id="min-size">-- KB</div>
+                <div class="metric-sub">Optimized BSON padding</div>
+            </div>
+            <div class="metric-card compliance-card">
+                <div class="metric-label">16 MB LIMIT COMPLIANCE</div>
+                <div class="metric-value success-text" id="compliance-status">PASSED</div>
+                <div class="metric-sub">Zero document unbounded growth</div>
+            </div>
+        </div>
+
+        <section class="decisions-section">
+            <h2>Embedding vs Referencing Decisions</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>RELATIONSHIP</th>
+                            <th>PATTERN USED</th>
+                            <th>DOCUMENT / MODEL</th>
+                            <th>DESIGN RATIONALE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Threat Indicators & Hashes</strong><br>(raw_indicators, hashes)</td>
+                            <td><span class="pattern embedded">[EMBEDDED]</span></td>
+                            <td class="code-cell">{ raw_indicators: ['198.51...'], hashes: {sha256: '...'} }</td>
+                            <td>Bounded 1-to-few relationship. Indicators are always queried and displayed alongside the threat report. Atomic single-document reads avoid costly joins.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>MITRE ATT&CK Tactics</strong><br>(mitre_tactics)</td>
+                            <td><span class="pattern embedded">[EMBEDDED]</span></td>
+                            <td class="code-cell">{ mitre_tactics: ['Initial Access', 'Persistence'] }</td>
+                            <td>Fixed taxonomy of adversary techniques. High read-to-write ratio, bounded array size.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Adversary Threat Groups</strong></td>
+                            <td><span class="pattern referenced">[REFERENCED]</span></td>
+                            <td class="code-cell">{ organization: { orgId: 'ORG-01', name: 'CISA' } }</td>
+                            <td>Unbounded 1-to-many relationship. Organizations publish thousands of reports. Embedding would duplicate metadata and risk hitting 16MB.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>External Intelligence Feeds</strong></td>
+                            <td><span class="pattern referenced">[REFERENCED]</span></td>
+                            <td class="code-cell">{ sourceFeed: { feedId: 'FEED-01', endpoint: '...' } }</td>
+                            <td>Decouples data ingestion pipelines from historical threat records. Allows updating feed ingestion health independently.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        
+        <section class="activity-section">
+            <h2>Activity 7.1: Redesign Referenced Sources as Embedded Design</h2>
+            <div class="activity-card">
+                <p>Compare query execution times: Referenced Design (Normalized Sources Collection + $lookup) vs Embedded Design (Denormalized inside Threat Report).</p>
+                
+                <button class="btn accent-btn" id="run-benchmark-btn" onclick="runBenchmark()">⚡ Run Performance Benchmark</button>
+                
+                <div class="benchmark-grid">
+                    <div class="benchmark-card">
+                        <div class="benchmark-title">Referenced Model ($lookup join)</div>
+                        <div class="benchmark-value" id="ref-time">-- ms</div>
+                        <div class="benchmark-sub">Requires multi-collection index scan & memory join pipeline.</div>
+                    </div>
+                    <div class="benchmark-card">
+                        <div class="benchmark-title">Embedded Model (Single Doc Read)</div>
+                        <div class="benchmark-value highlight-value" id="emb-time">-- ms</div>
+                        <div class="benchmark-sub">Zero joins. 100% single-seek latency.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

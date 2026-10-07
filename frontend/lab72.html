@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThreatPulse - Lab 7.2 Working Set</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-left">
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#2DD4BF" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M2 17L12 22L22 17" stroke="#2DD4BF" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="#2DD4BF" stroke-width="2" stroke-linejoin="round"/>
+                </svg>
+                ThreatPulse
+            </div>
+            <span class="badge live">● LIVE</span>
+        </div>
+        <div class="nav-right">
+            <span class="sync-status">Synced 09:23:42 PM UTC</span>
+            <button class="btn secondary">↻ Refresh</button>
+            <button class="btn success" id="atlas-status">● Checking backend</button>
+        </div>
+    </nav>
+
+    <div class="sub-nav">
+        <a href="index.html" class="tab">Threat Feed</a>
+        <a href="lab71.html" class="tab">Lab 7.1: Schema Analysis <span class="tab-badge">$bsonSize</span></a>
+        <a href="lab72.html" class="tab active">Lab 7.2: WiredTiger & Working Set <span class="tab-badge warning">Working Set</span></a>
+        <a href="sources.html" class="tab">Sources</a>
+        <a href="iocs.html" class="tab">IOC Database</a>
+        <a href="virustotal.html" class="tab">VirusTotal scan <span class="tab-badge info">Live API</span></a>
+        <a href="verify.html" class="tab">Threat Verifier <span class="tab-badge success">Instant Truth</span></a>
+    </div>
+
+    <main class="container">
+        <header class="page-header">
+            <div>
+                <h1>Lab 7.2: WiredTiger Cache & Working Set Comparison Analysis</h1>
+                <p>Observe eviction rates, random read penalties, and memory headroom comparison under 100k documents working set.</p>
+            </div>
+            <button class="btn accent-btn" id="stress-load-btn" style="margin-bottom:0;">▶ Launch Random Read Load (500 Ops)</button>
+        </header>
+        <p id="lab-status" class="lab-status" role="status">Connecting to live database metrics…</p>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">TOTAL WORKING SET</div>
+                <div class="metric-value" id="working-set">-- MB</div>
+                <div class="metric-sub">Active uncompressed data footprint</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">WIREDTIGER CACHE MAX</div>
+                <div class="metric-value" id="max-cache">-- MB</div>
+                <div class="metric-sub">50% of Host RAM Limit</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">RESIDENT IN CACHE</div>
+                <div class="metric-value success-text" id="resident-cache">-- MB</div>
+                <div class="metric-sub">Estimated Cache Footprint</div>
+            </div>
+            <div class="metric-card compliance-card">
+                <div class="metric-label">WORKING SET IN CACHE RATIO</div>
+                <div class="metric-value success-text" id="cache-ratio">--%</div>
+                <div class="metric-sub">Working set fits comfortably in RAM</div>
+            </div>
+        </div>
+        
+        <div class="capacity-section" style="background-color: #0d1117; border: 1px solid var(--border-color); border-radius: 8px; padding: 24px; margin-bottom: 32px;">
+            <h3 style="font-size: 11px; font-weight: 700; color: var(--text-main); margin-bottom: 16px; letter-spacing: 0.5px;">MEMORY ALLOCATION & CAPACITY COMPARISON</h3>
+            
+            <div class="progress-bar-container" style="background-color: #1E293B; height: 16px; border-radius: 8px; display: flex; overflow: hidden; margin-bottom: 12px;">
+                <div id="bar-resident" style="background-color: var(--accent-teal); height: 100%; width: 0%;"></div>
+                <div id="bar-working" style="background-color: var(--accent-amber); height: 100%; width: 0%;"></div>
+                <div id="bar-headroom" style="background-color: transparent; height: 100%; width: 100%;"></div>
+            </div>
+            
+            <div style="display: flex; gap: 24px; font-size: 11px; color: var(--text-muted);">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <div style="width: 10px; height: 10px; border-radius: 2px; background-color: var(--accent-teal);"></div>
+                    <span id="label-resident">Resident in Cache (-- MB / --%)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <div style="width: 10px; height: 10px; border-radius: 2px; background-color: var(--accent-amber);"></div>
+                    <span id="label-working">Working Set Total (-- MB / --%)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <div style="width: 10px; height: 10px; border-radius: 2px; background-color: #64748B;"></div>
+                    <span id="label-headroom">Free Cache Headroom (-- MB / --%)</span>
+                </div>
+            </div>
+        </div>
+        
+        <section class="activity-section">
+            <div class="activity-card">
+                <h3>Live WiredTiger Cache Hit Ratio Stream</h3>
+                <p>Measuring the percentage of page requests answered from RAM instead of disk. Values derived from Atlas page faults proxy.</p>
+                <div style="height: 300px; width: 100%; margin-top: 20px;">
+                    <canvas id="hitRatioChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="app72.js"></script>
+</body>
+</html>
