@@ -1,5 +1,6 @@
 # Fieldnotes — Cyber Threat Intelligence Platform
 
+![CI](https://github.com/harshittt1/fieldnotes-cti/actions/workflows/ci.yml/badge.svg)
 **Live demo:** https://fieldnotes-cti.vercel.app
 
 Fieldnotes pulls threat intelligence from several open-source feeds, normalizes it into one MongoDB Atlas store, and lets you search, filter and verify it from a single web dashboard. It also includes two database labs that analyse document sizes (`$bsonSize`) and WiredTiger cache / working-set behaviour on the real dataset.
